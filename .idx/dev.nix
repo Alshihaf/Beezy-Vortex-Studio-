@@ -6,11 +6,21 @@
 
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    # pkgs.go
-    # pkgs.python311
-    # pkgs.python311Packages.pip
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    pkgs.android-sdk
+    pkgs.android-ndk
+    pkgs.cmake
+    pkgs.vulkan-loader
+    pkgs.vulkan-tools
+    pkgs.gcc
+    pkgs.postgresql_14
+    pkgs.redis
+    pkgs.docker
+    pkgs.docker-compose
+    pkgs.protobuf
+    pkgs.grpc
+    pkgs.git
+    pkgs.git-lfs
+    pkgs.ffmpeg-full
   ];
 
   # Sets environment variables in the workspace
