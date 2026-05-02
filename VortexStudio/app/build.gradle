@@ -9,7 +9,7 @@ android {
     ndkVersion "25.1.8937393"
 
     defaultConfig {
-        applicationId "com.beezyvortex.studio"
+        applicationId "com.vortex.studio"
         minSdk 24
         targetSdk 33
         versionCode 1

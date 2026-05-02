@@ -13,5 +13,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "BeezyVortex Studio"
+rootProject.name = "VortexStudio"
 include ':app'

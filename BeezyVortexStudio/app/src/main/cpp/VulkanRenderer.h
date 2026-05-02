@@ -1,32 +1,37 @@
 
-#pragma once
+#ifndef BEEZYVORTEXSTUDIO_VULKANRENDERER_H
+#define BEEZYVORTEXSTUDIO_VULKANRENDERER_H
 
 #include <android/native_window.h>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 class VulkanRenderer {
 public:
-    VulkanRenderer(ANativeWindow* window);
+    VulkanRenderer();
     ~VulkanRenderer();
 
-    bool init();
-    void render();
+    void init(ANativeWindow* window);
     void cleanup();
 
 private:
-    bool createInstance();
-    bool pickPhysicalDevice();
-    bool createLogicalDevice();
-    bool createSwapchain();
-    void cleanupSwapchain();
+    void createInstance();
+    void createSurface(ANativeWindow* window);
+    void pickPhysicalDevice();
+    void createLogicalDevice();
+    void createSwapchain();
+    void createImageViews();
 
-    ANativeWindow* nativeWindow_ = nullptr;
-    VkInstance instance_ = VK_NULL_HANDLE;
-    VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
-    VkDevice device_ = VK_NULL_HANDLE;
-    VkQueue graphicsQueue_ = VK_NULL_HANDLE;
-    VkSurfaceKHR surface_ = VK_NULL_HANDLE;
-    VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
-    
-    // Add more Vulkan handles here as we build the engine
+    VkInstance instance;
+    VkSurfaceKHR surface;
+    VkPhysicalDevice physicalDevice;
+    VkDevice device;
+    VkQueue graphicsQueue;
+    VkSwapchainKHR swapchain;
+    std::vector<VkImage> swapchainImages;
+    std::vector<VkImageView> swapchainImageViews;
+    VkFormat swapchainImageFormat;
+    VkExtent2D swapchainExtent;
 };
+
+#endif //BEEZYVORTEXSTUDIO_VULKANRENDERER_H

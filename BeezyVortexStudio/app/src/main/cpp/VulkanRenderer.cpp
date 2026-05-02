@@ -1,130 +1,118 @@
 
 #include "VulkanRenderer.h"
-#include <vector>
 #include <android/log.h>
+#include <vector>
 
 #define LOG_TAG "VulkanRenderer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-VulkanRenderer::VulkanRenderer(ANativeWindow* window) : nativeWindow_(window) {}
+VulkanRenderer::VulkanRenderer() : instance(VK_NULL_HANDLE), surface(VK_NULL_HANDLE), 
+                                     physicalDevice(VK_NULL_HANDLE), device(VK_NULL_HANDLE),
+                                     swapchain(VK_NULL_HANDLE) {}
 
 VulkanRenderer::~VulkanRenderer() {
-    cleanup();
+    // Cleanup will be called explicitly
 }
 
-bool VulkanRenderer::init() {
-    if (!createInstance()) {
-        LOGE("Failed to create Vulkan instance");
-        return false;
+void VulkanRenderer::init(ANativeWindow* window) {
+    LOGI("Initializing Vulkan Renderer...");
+    try {
+        createInstance();
+        createSurface(window);
+        pickPhysicalDevice();
+        createLogicalDevice();
+        createSwapchain();
+        createImageViews();
+        LOGI("Vulkan Renderer initialized successfully.");
+    } catch (const std::runtime_error& e) {
+        LOGE("Vulkan initialization failed: %s", e.what());
+        cleanup();
     }
-    LOGI("Vulkan instance created successfully");
-
-    // Create surface
-    VkResult result = vkCreateAndroidSurfaceKHR(instance_, &VkAndroidSurfaceCreateInfoKHR{
-        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
-        .pNext = nullptr,
-        .flags = 0,
-        .window = nativeWindow_
-    }, nullptr, &surface_);
-
-    if (result != VK_SUCCESS) {
-        LOGE("Failed to create Vulkan surface");
-        return false;
-    }
-    LOGI("Vulkan surface created successfully");
-
-    if (!pickPhysicalDevice()) {
-        LOGE("Failed to pick physical device");
-        return false;
-    }
-    LOGI("Physical device picked successfully");
-
-    if (!createLogicalDevice()) {
-        LOGE("Failed to create logical device");
-        return false;
-    }
-    LOGI("Logical device created successfully");
-
-    if (!createSwapchain()) {
-        LOGE("Failed to create swapchain");
-        return false;
-    }
-    LOGI("Swapchain created successfully");
-
-    return true;
-}
-
-void VulkanRenderer::render() {
-    // TODO: Main render loop
 }
 
 void VulkanRenderer::cleanup() {
-    cleanupSwapchain();
-    if (device_ != VK_NULL_HANDLE) {
-        vkDestroyDevice(device_, nullptr);
-        LOGI("Logical device destroyed");
+    LOGI("Cleaning up Vulkan Renderer...");
+    if (device != VK_NULL_HANDLE) {
+        for (auto imageView : swapchainImageViews) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        if (swapchain != VK_NULL_HANDLE) {
+            vkDestroySwapchainKHR(device, swapchain, nullptr);
+        }
+        vkDestroyDevice(device, nullptr);
     }
-    if (surface_ != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(instance_, surface_, nullptr);
-        LOGI("Vulkan surface destroyed");
+    if (instance != VK_NULL_HANDLE) {
+        if (surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(instance, surface, nullptr);
+        }
+        vkDestroyInstance(instance, nullptr);
     }
-    if (instance_ != VK_NULL_HANDLE) {
-        vkDestroyInstance(instance_, nullptr);
-        LOGI("Vulkan instance destroyed");
-    }
+    instance = VK_NULL_HANDLE;
+    surface = VK_NULL_HANDLE;
+    physicalDevice = VK_NULL_HANDLE;
+    device = VK_NULL_HANDLE;
+    swapchain = VK_NULL_HANDLE;
 }
 
-bool VulkanRenderer::createInstance() {
+void VulkanRenderer::createInstance() {
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "BeezyVortex Studio";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
+    appInfo.pEngineName = "BeezyVortex Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
     appInfo.apiVersion = VK_API_VERSION_1_1;
-
-    const std::vector<const char*> requiredExtensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
-    };
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
-    createInfo.ppEnabledExtensionNames = requiredExtensions.data();
-    createInfo.enabledLayerCount = 0;
 
-    return vkCreateInstance(&createInfo, nullptr, &instance_) == VK_SUCCESS;
+    const std::vector<const char*> extensions = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
+    };
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
+    createInfo.enabledLayerCount = 0; // No validation layers for now
+
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Vulkan instance");
+    }
+    LOGI("Vulkan Instance created.");
 }
 
-bool VulkanRenderer::pickPhysicalDevice() {
+void VulkanRenderer::createSurface(ANativeWindow* window) {
+    VkAndroidSurfaceCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+    createInfo.window = window;
+
+    if (vkCreateAndroidSurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Android surface");
+    }
+    LOGI("Vulkan Surface created.");
+}
+
+void VulkanRenderer::pickPhysicalDevice() {
     uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance_, &deviceCount, nullptr);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
     if (deviceCount == 0) {
-        LOGE("Failed to find GPUs with Vulkan support!");
-        return false;
+        throw std::runtime_error("Failed to find GPUs with Vulkan support");
     }
     std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance_, &deviceCount, devices.data());
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
     // For now, just pick the first available device
-    physicalDevice_ = devices[0];
-
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(physicalDevice_, &properties);
-    LOGI("Picked GPU: %s", properties.deviceName);
-
-    return true;
+    physicalDevice = devices[0];
+    LOGI("Physical Device selected.");
 }
 
-bool VulkanRenderer::createLogicalDevice() {
+void VulkanRenderer::createLogicalDevice() {
     // For now, we only need a graphics queue
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount, queueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
     int graphicsFamily = -1;
     for (int i = 0; i < queueFamilies.size(); i++) {
@@ -135,59 +123,46 @@ bool VulkanRenderer::createLogicalDevice() {
     }
 
     if (graphicsFamily == -1) {
-        LOGE("Failed to find a queue family that supports graphics");
-        return false;
+        throw std::runtime_error("Failed to find a suitable queue family");
     }
 
-    float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo{};
     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queueCreateInfo.queueFamilyIndex = graphicsFamily;
     queueCreateInfo.queueCount = 1;
+    float queuePriority = 1.0f;
     queueCreateInfo.pQueuePriorities = &queuePriority;
 
     VkPhysicalDeviceFeatures deviceFeatures{}; // No special features needed for now
-
-    const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.pQueueCreateInfos = &queueCreateInfo;
     createInfo.queueCreateInfoCount = 1;
     createInfo.pEnabledFeatures = &deviceFeatures;
+
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-    createInfo.enabledLayerCount = 0;
 
-    if (vkCreateDevice(physicalDevice_, &createInfo, nullptr, &device_) != VK_SUCCESS) {
-        return false;
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create logical device");
     }
 
-    vkGetDeviceQueue(device_, graphicsFamily, 0, &graphicsQueue_);
-    return true;
+    vkGetDeviceQueue(device, graphicsFamily, 0, &graphicsQueue);
+    LOGI("Logical Device and Graphics Queue created.");
 }
 
-bool VulkanRenderer::createSwapchain() {
-    // Query swapchain support
+void VulkanRenderer::createSwapchain() {
+    // Query surface capabilities
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice_, surface_, &capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
 
-    uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice_, surface_, &formatCount, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice_, surface_, &formatCount, formats.data());
-
-    uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice_, surface_, &presentModeCount, nullptr);
-    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice_, surface_, &presentModeCount, presentModes.data());
-
-    // Choose swapchain settings (for now, just pick some reasonable defaults)
-    VkSurfaceFormatKHR surfaceFormat = formats[0];
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // Guaranteed to be available
-    VkExtent2D extent = capabilities.currentExtent;
+    // Choose an image format
+    swapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    swapchainExtent = capabilities.currentExtent;
 
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
@@ -196,26 +171,55 @@ bool VulkanRenderer::createSwapchain() {
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface_;
+    createInfo.surface = surface;
     createInfo.minImageCount = imageCount;
-    createInfo.imageFormat = surfaceFormat.format;
-    createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = extent;
+    createInfo.imageFormat = swapchainImageFormat;
+    createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    createInfo.imageExtent = swapchainExtent;
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     createInfo.preTransform = capabilities.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-    createInfo.presentMode = presentMode;
+    createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR; // V-Sync
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    return vkCreateSwapchainKHR(device_, &createInfo, nullptr, &swapchain_) == VK_SUCCESS;
+    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create swapchain");
+    }
+
+    // Get swapchain images
+    vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
+    swapchainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, swapchain, &imageCount, swapchainImages.data());
+
+    LOGI("Swapchain created with %d images.", imageCount);
 }
 
-void VulkanRenderer::cleanupSwapchain() {
-    if (swapchain_ != VK_NULL_HANDLE) {
-        vkDestroySwapchainKHR(device_, swapchain_, nullptr);
-        LOGI("Swapchain destroyed");
+void VulkanRenderer::createImageViews() {
+    swapchainImageViews.resize(swapchainImages.size());
+
+    for (size_t i = 0; i < swapchainImages.size(); i++) {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = swapchainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = swapchainImageFormat;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(device, &createInfo, nullptr, &swapchainImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create image views");
+        }
     }
+    LOGI("%zu Image Views created.", swapchainImageViews.size());
 }
+

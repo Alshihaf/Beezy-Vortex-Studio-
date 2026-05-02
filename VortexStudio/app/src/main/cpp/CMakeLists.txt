@@ -5,16 +5,17 @@ project("beezyvortexstudio"
     VERSION 0.1
     LANGUAGES CXX)
 
-# Find and link the Vulkan library
-find_library(vulkan-lib vulkan)
-
 add_library(beezyvortex-native SHARED
     native-lib.cpp
-    VulkanRenderer.cpp)
+    VulkanRenderer.cpp) # Add VulkanRenderer.cpp to the build
 
 find_library(log-lib
     log)
 
+# Find and link Vulkan library
+find_library(vulkan-lib
+    vulkan)
+
 target_link_libraries(beezyvortex-native
     ${log-lib}
-    ${vulkan-lib})
+    ${vulkan-lib}) # Link against Vulkan

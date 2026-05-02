@@ -1,5 +1,5 @@
 
-package com.beezyvortex.studio.ui.theme
+package com.vortex.studio.presentation.theme
 
 import android.app.Activity
 import android.os.Build
@@ -39,7 +39,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun BeezyVortexStudioTheme(
+fun VortexStudioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,

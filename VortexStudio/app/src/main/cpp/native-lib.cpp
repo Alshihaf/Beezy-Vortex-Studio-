@@ -7,7 +7,7 @@
 static VulkanRenderer* renderer = nullptr;
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_beezyvortex_studio_MainActivity_stringFromJNI(
+Java_com_vortex_studio_presentation_MainActivity_stringFromJNI(
         JNIEnv* env,
         jobject /* this */) {
     std::string hello = "Vulkan Core Initialized";
@@ -15,22 +15,22 @@ Java_com_beezyvortex_studio_MainActivity_stringFromJNI(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_beezyvortex_studio_MainActivity_initVulkan(JNIEnv* env, jobject /* this */, jobject surface) {
+Java_com_vortex_studio_presentation_MainActivity_initVulkan(JNIEnv* env, jobject /* this */, jobject surface) {
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
     if (window == nullptr) {
-        // Log error
         return;
     }
-    if (renderer == nullptr) {
-        renderer = new VulkanRenderer();
-        renderer->init(window);
+    
+    renderer = new VulkanRenderer(window);
+    if (!renderer->init()) {
+        delete renderer;
+        renderer = nullptr;
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_beezyvortex_studio_MainActivity_cleanupVulkan(JNIEnv* env, jobject /* this */) {
+Java_com_vortex_studio_presentation_MainActivity_cleanupVulkan(JNIEnv* env, jobject /* this */) {
     if (renderer != nullptr) {
-        renderer->cleanup();
         delete renderer;
         renderer = nullptr;
     }

@@ -1,5 +1,5 @@
 
-package com.beezyvortex.studio
+package com.vortex.studio.presentation
 
 import android.os.Bundle
 import android.view.Surface
@@ -29,10 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.beezyvortex.studio.ui.theme.BeezyVortexStudioTheme
+import com.vortex.studio.presentation.theme.VortexStudioTheme
 import java.text.DecimalFormat
 
 // Data class to hold properties of an object in the scene
@@ -49,7 +50,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            BeezyVortexStudioTheme {
+            VortexStudioTheme {
                 EditorScreen()
             }
         }
@@ -159,7 +160,8 @@ fun TimelinePanel(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = "Timeline Panel",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
@@ -181,6 +183,7 @@ fun InspectorPanel(
         Text("Inspector", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Position X Slider
         PropertySlider(
             label = "Position X",
             value = sceneObject.positionX,
@@ -189,6 +192,7 @@ fun InspectorPanel(
             formatter = floatFormatter
         )
         
+        // Position Y Slider
         PropertySlider(
             label = "Position Y",
             value = sceneObject.positionY,
@@ -197,6 +201,7 @@ fun InspectorPanel(
             formatter = floatFormatter
         )
 
+        // Scale Slider
         PropertySlider(
             label = "Scale",
             value = sceneObject.scale,
@@ -205,6 +210,7 @@ fun InspectorPanel(
             formatter = floatFormatter
         )
 
+        // Rotation Slider
         PropertySlider(
             label = "Rotation",
             value = sceneObject.rotation,
@@ -240,7 +246,7 @@ fun PropertySlider(
 @Preview(showBackground = true, widthDp = 1280, heightDp = 800)
 @Composable
 fun EditorScreenPreview() {
-    BeezyVortexStudioTheme {
+    VortexStudioTheme {
         EditorScreen()
     }
 }

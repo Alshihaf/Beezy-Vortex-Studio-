@@ -1,5 +1,6 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.vortex.studio"
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
@@ -11,13 +12,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BeezyVortexStudio"
+        android:theme="@style/Theme.VortexStudio"
         tools:targetApi="31">
         <activity
             android:name=".presentation.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.BeezyVortexStudio">
+            android:theme="@style/Theme.VortexStudio">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
